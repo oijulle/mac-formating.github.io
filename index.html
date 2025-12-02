@@ -28,7 +28,6 @@
     h2 { text-align: center; margin-bottom: 20px; font-weight: 600; }
     input {
         width: 100%;
-        max-width: 100%;
         padding: 12px 15px;
         border-radius: 12px;
         border: none;
@@ -39,11 +38,35 @@
         box-sizing: border-box;
     }
     input::placeholder { color: #888; }
-    .result { background-color: #2a2a2a; padding: 15px; border-radius: 12px; margin-top: 15px; word-break: break-word; }
-    .format-line { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .copy-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #00bcd4; flex-shrink: 0; }
-    .copy-btn:hover { color: #00e5ff; }
-    #manufacturerOutput { margin-top: 15px; font-style: italic; text-align: center; color: #a0a0a0; }
+    .result { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .format-box {
+        background-color: #2a2a2a;
+		height:12px;
+        padding: 15px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: transform 0.1s, box-shadow 0.1s;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        word-break: break-all;
+        text-transform: lowercase;
+    }
+    .format-box:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .format-box.copied {
+        background-color: #00bcd4;
+        color: #121212;
+    }
+    .format-label { font-weight: 500; }
+    #manufacturerOutput {
+        margin-top: 15px;
+        font-style: italic;
+        text-align: center;
+        color: #a0a0a0;
+    }
 </style>
 </head>
 <body>
@@ -52,26 +75,23 @@
     <input id="macInput" type="text" placeholder="Enter MAC address">
 
     <div class="result" id="formattedOutput">
-        <div class="format-line">Colon format: <span id="fmt_colon"></span> <button class="copy-btn" onclick="copyText('fmt_colon')">📋</button></div>
-        <div class="format-line">Dash format: <span id="fmt_dash"></span> <button class="copy-btn" onclick="copyText('fmt_dash')">📋</button></div>
-        <div class="format-line">No separator: <span id="fmt_none"></span> <button class="copy-btn" onclick="copyText('fmt_none')">📋</button></div>
-        <div class="format-line">Group of 4: <span id="fmt_group4"></span> <button class="copy-btn" onclick="copyText('fmt_group4')">📋</button></div>
+        <div class="format-box" onclick="copyBox('fmt_colon', this)"> <span id="fmt_colon"></span></div>
+        <div class="format-box" onclick="copyBox('fmt_dash', this)"> <span id="fmt_dash"></span></div>
+        <div class="format-box" onclick="copyBox('fmt_none', this)"> <span id="fmt_none"></span></div>
+        <div class="format-box" onclick="copyBox('fmt_group4', this)"><span id="fmt_group4"></span></div>
     </div>
     <div id="manufacturerOutput"></div>
 </div>
 
 <script>
 function cleanMac(mac) {
-    return mac.replace(/[^A-Fa-f0-9]/g, '').toUpperCase();
+    return mac.replace(/[^A-Fa-f0-9]/g, '').toLowerCase();
 }
-
 function applyFormat(mac, style) {
     if (style === 'none') return mac;
     if (style === 'group4') return mac.match(/.{1,4}/g).join('-');
     return mac.match(/.{1,2}/g).join(style);
 }
-
-// Lookup manufacturer via CORS proxy
 async function lookupManufacturer(cleanedMac) {
     const prefix = cleanedMac.substring(0, 6);
     const targetUrl = encodeURIComponent(`https://api.macvendors.com/${prefix}`);
@@ -80,15 +100,12 @@ async function lookupManufacturer(cleanedMac) {
     try {
         const response = await fetch(proxyUrl);
         if (!response.ok) return "Manufacturer not found";
-
         const data = await response.json();
-        // allorigins returns the content as 'contents'
         return data.contents || "Manufacturer not found";
     } catch (e) {
         return "Error contacting API";
     }
 }
-
 async function autoFormat() {
     const input = document.getElementById('macInput').value;
     const cleaned = cleanMac(input);
@@ -111,12 +128,15 @@ async function autoFormat() {
     const vendor = await lookupManufacturer(cleaned);
     vendorOutput.textContent = `Manufacturer: ${vendor}`;
 }
-
 document.getElementById('macInput').addEventListener('input', autoFormat);
 
-function copyText(id) {
+function copyBox(id, boxElement) {
     const text = document.getElementById(id).textContent;
     navigator.clipboard.writeText(text);
+    boxElement.classList.add('copied');
+    setTimeout(() => {
+        boxElement.classList.remove('copied');
+    }, 800);
 }
 </script>
 </body>
